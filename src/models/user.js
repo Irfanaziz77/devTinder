@@ -1,72 +1,93 @@
 const mongoose = require("mongoose");
 const { kMaxLength } = require("node:buffer");
 const validator = require("validator");
+const jwt = require("jsonwebtoken");
 
+const bcrypt = require("bcrypt");
 
-
-const userSchema = new mongoose.Schema({
-    firstName:{
-        type:String,
-        required:true,
-        minlength:4,
-        maxlength:20,
+const userSchema = new mongoose.Schema(
+  {
+    firstName: {
+      type: String,
+      required: true,
+      minlength: 4,
+      maxlength: 20,
     },
-    lastName:{
-        type:String, 
+    lastName: {
+      type: String,
     },
-    emailId:{
-        type:String,
-        required:true,
-        unique:true,
-        lowercase: true,
-        validate(value){
-            if(!validator.isEmail(value)){
-               throw new Error("invalid email address :" + value);
-            }
+    emailId: {
+      type: String,
+      required: true,
+      unique: true,
+      lowercase: true,
+      validate(value) {
+        if (!validator.isEmail(value)) {
+          throw new Error("invalid email address :" + value);
         }
+      },
     },
-    password:{
-        type:String,
-          required:true,
-           validate(value){
-            if(!validator.isStrongPassword(value)){
-               throw new Error("Enter a strong password :" + value);
-            }
-           },
-        },
-    age:{
-        type:Number,
-        min:18,
-        max:50
-    },
-    gender:{
-        type:String,
-        validate(value){
-            if(!["male","female", "others"].includes(value)){
-                throw new Error("Invalid gender");
-            }
+    password: {
+      type: String,
+      required: true,
+      validate(value) {
+        if (!validator.isStrongPassword(value)) {
+          throw new Error("Enter a strong password :" + value);
         }
+      },
     },
-    photoUrl:{
-        type:String,
-        default:"https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRiibOngFYog5Ri5UoFKH3CsHMOvomBLf4JAw&s",
-          validate(value){
-            if(!validator.isURL(value)){
-               throw new Error("invalid photo url :" + value);
-            }
+    age: {
+      type: Number,
+      min: 18,
+      max: 50,
+    },
+    gender: {
+      type: String,
+      validate(value) {
+        if (!["male", "female", "others"].includes(value)) {
+          throw new Error("Invalid gender");
         }
+      },
     },
-    about:{
-        type:String,
-        default:"This is the default aboout of the user!",
+    photoUrl: {
+      type: String,
+      default:
+        "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRiibOngFYog5Ri5UoFKH3CsHMOvomBLf4JAw&s",
+      validate(value) {
+        if (!validator.isURL(value)) {
+          throw new Error("invalid photo url :" + value);
+        }
+      },
     },
-    skills:{
-        type:[String],
+    about: {
+      type: String,
+      default: "This is the default aboout of the user!",
     },
-  
-   }, {
-        timestamps:true
+    skills: {
+      type: [String],
     },
-)
+  },
+  {
+    timestamps: true,
+  },
+);
 
+userSchema.methods.getJWT = async function () {
+  const user = this;
+
+  const token = await jwt.sign({ _id: user._id }, "Dev@Tinder$790", {
+    expiresIn: "7d",
+  });
+  return token;
+};
+
+userSchema.methods.validatePassword = async function (PasswordInputByUser) {
+  const user = this;
+  const passwordHash = user.password;
+
+  const isPasswordValid = await bcrypt.compare(PasswordInputByUser,passwordHash,
+  );
+
+  return isPasswordValid;
+};
 module.exports = mongoose.model("User", userSchema);
